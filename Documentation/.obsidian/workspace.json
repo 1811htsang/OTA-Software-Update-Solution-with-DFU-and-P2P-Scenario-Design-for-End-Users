@@ -1,0 +1,173 @@
+{
+  "main": {
+    "id": "72a4e6bb3d20515b",
+    "type": "split",
+    "children": [
+      {
+        "id": "a642beb54ccf0cad",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "2c74581ad688d6e4",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "26b14fbefa951392",
+    "type": "split",
+    "children": [
+      {
+        "id": "95f036de7f064938",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "fc165cbbb128e446",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "deef540eadb5c755",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          },
+          {
+            "id": "094d80f0acd3fe2b",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "right": {
+    "id": "9f50c0729c9e40c5",
+    "type": "split",
+    "children": [
+      {
+        "id": "5c41a06085fa48a1",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "50f476379b289fda",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "report 25-09-25.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for report 25-09-25"
+            }
+          },
+          {
+            "id": "c71e380e5f8ed662",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "report 25-09-25.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from report 25-09-25"
+            }
+          },
+          {
+            "id": "4d9910bb44625f45",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "7318286ed9c02ee2",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "report 25-09-25.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of report 25-09-25"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "2c74581ad688d6e4",
+  "lastOpenFiles": [
+    "research_paper/A Blockchain-Based OCF Firmware Update for IoT Devices.pdf",
+    "report 25-09-25.md",
+    "report 11-09-25.md",
+    "report-30-07-25.md",
+    "report 13-08-25.md"
+  ]
+}
