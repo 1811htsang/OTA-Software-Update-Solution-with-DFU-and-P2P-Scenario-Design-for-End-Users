@@ -1,2 +1,6 @@
 .vscode/*
 idf/simple-hello-world/build/*
+code/idf/simple-hello-world/.devcontainer
+code/idf/simple-hello-world/.vscode
+code/arduino/libraries/*
+docs/.obsidian
