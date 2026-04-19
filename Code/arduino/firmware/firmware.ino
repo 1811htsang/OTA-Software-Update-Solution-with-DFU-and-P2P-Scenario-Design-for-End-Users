@@ -500,7 +500,7 @@ void func_ping_ftp() {
 }
 
 void func_login_ftp(FTP32& ftp, uint16_t& ftp_connect_flag) {
-  ftp_connect_flag = ftp.connectWithwifi_pass_glb("shanghuang-jetsonnano", "181105");
+  ftp_connect_flag = ftp.connectWithPassword("shanghuang-jetsonnano", "181105");
   if (ftp_connect_flag != 0) {
     Serial.printf("Login unsuccessful: %d %s\n", ftp.getLastCode(), ftp.getLastMsg());
   } else {
