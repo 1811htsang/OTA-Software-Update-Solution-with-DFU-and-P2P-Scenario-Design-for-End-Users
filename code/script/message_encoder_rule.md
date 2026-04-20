@@ -7,7 +7,7 @@ Mã code đi từ phía Gateway chứa các trường thông tin sau:
 - Header (1 byte) mang giá trị `0xFF` để chỉ định đây là một yêu cầu cấu hình từ gateway.
 - ID (1 byte) mang giá trị `0xD1` để chỉ định đây là một yêu cầu cấu hình. (Lưu ý do trong hệ thống chỉ có 1 gateway nên ID này có thể được sử dụng để phân biệt nếu có nhiều gateway trong tương lai)
 - Sync_Token (4 bytes) mang giá trị unix timestamp tại thời điểm gửi thông điệp. Trường này giúp server xác định thời điểm gửi yêu cầu và có thể sử dụng để đồng bộ hóa dữ liệu nếu cần thiết.
-- CRC (1 byte) được tính toán dựa trên các trường trước đó để đảm bảo tính toàn vẹn của thông điệp. CRC sẽ được tính bằng cách sử dụng thuật toán CRC-16 trên các trường Header, ID và Sync_Token.
+- CRC (1 byte) được tính toán dựa trên các trường trước đó để đảm bảo tính toàn vẹn của thông điệp. CRC sẽ được tính bằng cách sử dụng thuật toán CRC-16 trên các trường Header, ID và Sync_Token. CRC-16 này sẽ lấy 2 byte kết quả đầu tiên để gửi trong thông điệp, giúp giảm kích thước gói tin mà vẫn đảm bảo khả năng phát hiện lỗi cơ bản.
 
 Server sẽ nhận được thông điệp này và trả lại thông điệp như sau:
 
