@@ -4,3 +4,4 @@ code/idf/simple-hello-world/.devcontainer
 code/idf/simple-hello-world/.vscode
 code/arduino/libraries/*
 docs/.obsidian
+code/data/central_db.db
