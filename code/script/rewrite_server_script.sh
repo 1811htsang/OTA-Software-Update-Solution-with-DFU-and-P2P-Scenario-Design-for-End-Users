@@ -67,4 +67,68 @@ request_v=$(mosquitto_sub -h $mqtt_server_ip_p -p 1883 -u $username_p -P $passwo
 # @brief Hiển thị thông tin yêu cầu cấu hình đã nhận được để xác nhận trước khi tiếp tục
 echo -e "${GREEN}[INFO] Received gateway configuration request: $request_v${END}"
 
+# Function to parse encoded packet from gateway configuration request
+parse_gateway_config_request() {
+  local packet="$1"
 
+  # Ensure the packet has the minimum required length (7 bytes: Header, ID, Sync_Token, CRC)
+  if [[ ${#packet} -lt 7 ]]; then
+    echo -e "${RED}[Error] Invalid packet length!${END}"
+    return 1
+  fi
+
+  # Extract fields from the packet
+  local header="${packet:0:2}"
+  local id="${packet:2:2}"
+  local sync_token="${packet:4:8}"
+  local crc="${packet:12:2}"
+
+  # Check CRC 
+  local calculated_crc=$(python3 -c "
+    import binascii
+    data = bytes.fromhex('050303E80003B20102D401653B6F00')
+    crc = binascii.crc_hqx(data, 0xFFFF)
+    print(f'{hex(crc).upper()}')
+  ")
+
+  # Validate the header and ID
+  if [[ "$header" != "FF" || "$id" != "D1" ]]; then
+    echo -e "${RED}[Error] Invalid packet header or ID!${END}"
+    return 1
+  fi
+
+  # Validate CRC
+  if [[ "$crc" != "${calculated_crc:2:2}" ]]; then
+    echo -e "${RED}[Error] CRC check failed!${END}"
+    return 1
+  fi
+
+  # Assign extracted values to variables
+  gateway_header="$header"
+  gateway_id="$id"
+  gateway_sync_token="$sync_token"
+  gateway_crc="$crc"
+
+  echo -e "${GREEN}[INFO] Parsed packet successfully:${END}"
+  echo -e "${GREEN}[INFO] Header: $gateway_header${END}"
+  echo -e "${GREEN}[INFO] ID: $gateway_id${END}"
+  echo -e "${GREEN}[INFO] Sync Token: $gateway_sync_token${END}"
+  echo -e "${GREEN}[INFO] CRC: $gateway_crc${END}"
+
+  return 0
+}
+
+is_pass= parse_gateway_config_request "$request_v"
+
+# @brief Gọi hàm phân tích yêu cầu cấu hình từ gateway
+if [[ $is_pass -eq 0 ]]; then
+  echo -e "${GREEN}[INFO] Gateway configuration request parsed successfully.${END}"
+else
+  echo -e "${RED}[Error] Failed to parse gateway configuration request!${END}"
+  exit 1
+fi
+
+# @brief Sau khi phân tích yêu cầu cấu hình, server sẽ thực hiện các bước cần thiết để cập nhật cấu hình và phản hồi lại gateway
+# @attention Bước này sẽ gọi sqlite để lấy cấu hình toàn bộ 
+#            các thiết bị và gửi lại cho gateway thông qua MQTT
+sqlite3 
