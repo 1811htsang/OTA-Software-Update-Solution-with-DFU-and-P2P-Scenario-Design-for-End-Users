@@ -58,6 +58,22 @@ CREATE TABLE system_sync (
 );
 ```
 
+## Bảng 5 `dev_join_fw` (Nối thiết bị với những firmware được dành riêng cho nó)
+
+Đây là bảng trung gian để xác định thiết bị nào có thể nhận được bản cập nhật nào, dựa trên các tiêu chí như loại thiết bị, phiên bản hiện tại, v.v.
+
+```sql
+CREATE TABLE dev_join_fw (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  device_id INTEGER,                -- ID của thiết bị
+  fw_id INTEGER,                    -- ID firmware mà thiết bị này có thể nhận
+  version INTEGER,                  -- Phiên bản của firmware này
+  is_force INTEGER DEFAULT 0,       -- 0: Thường, 1: Bắt buộc (Force Update)
+  FOREIGN KEY(device_id) REFERENCES devices(device_id),
+  FOREIGN KEY(fw_id) REFERENCES firmwares(fw_id)
+);
+```
+
 ## Hướng dẫn sử dụng với sqlite
 
 - `sqlite3 firmware_update.db` để mở database.
