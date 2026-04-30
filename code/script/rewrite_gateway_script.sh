@@ -85,7 +85,19 @@ echo -e "${GREEN}[INFO] Extracted Checksum: $checksum_v${END}"
 # @brief Bắt đầu xử lý yêu cầu dựa trên thông tin đã trích xuất
 # @attention Cần thực hiện kiểm tra checksum 
 #            để đảm bảo tính toàn vẹn của dữ liệu
-
+query_v="
+  SELECT 
+    MAX(f.fw_id), 
+    f.version, 
+    f.file_size, 
+    j.is_force 
+  FROM firmwares f
+  JOIN dev_join_fw j ON f.fw_id = j.fw_id
+  WHERE j.device_id = $device_id_v 
+  AND f.version > $current_ver_v; 
+-- Kết quả này dùng để đóng gói vào bản tin 0xBB gửi ESP32
+"
+fetching_result_v=$(sqlite3 $database_path_v/gateway_db.db "$query_v")
 
 # @brief Bắt đầu so khớp yêu cầu so với cơ sở dữ liệu nội bộ của gateway 
 #        để xác định xem có cần cập nhật firmware hay không
@@ -98,3 +110,26 @@ echo -e "${GREEN}[INFO] Extracted Checksum: $checksum_v${END}"
 #           GW cần kiểm tra so khớp FW từ database nội bộ với FW của server 
 #           để để kiểm tra xem có cần update FW của GW trước 
 #           khi cho phép thiết bị cập nhật FW hay không
+
+# @brief Hiển thị kết quả truy vấn để xác nhận trước khi tiếp tục
+echo -e "${GREEN}[INFO] Database query result: $fetching_result_v${END}"
+
+# @brief Bắt đầu parsing kết quả truy vấn để xác định thông tin firmware mới nhất
+# @attention chỉ lấy fw_id và version để so sánh với yêu cầu của ESP32
+fetching_fw_id_v=$(echo $fetching_result_v | cut -d'|' -f1)
+fetching_version_v=$(echo $fetching_result_v | cut -d'|' -f2)
+
+# @brief Kiểm tra nếu fw_id từ request của ESP32 đã là phiên bản mới nhất thì không cần cập nhật
+if [[ "$fetching_fw_id_v" -le "$firmware_id_v" ]]; then
+  echo -e "${YELLOW}[INFO] No update needed. Device is already on the latest firmware version.${END}"
+  exit 0
+else 
+  if [[ "$realtime_mode_p" -eq 1 ]]; then
+    echo -e "${GREEN}[INFO] Realtime mode enabled. Proceeding with firmware update...${END}"
+    # @brief Thực hiện các bước cần thiết để cập nhật firmware cho thiết bị
+  else 
+    echo -e "${GREEN}[INFO] Non-realtime mode enabled. Checking gateway firmware version...${END}"
+    # @brief Thực hiện các bước cần thiết để kiểm tra giữa GW và SV
+  fi
+fi
+

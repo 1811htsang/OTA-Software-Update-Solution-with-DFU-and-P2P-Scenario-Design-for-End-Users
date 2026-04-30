@@ -61,6 +61,8 @@ echo -e "${GREEN}[INFO] Script path: $script_path_v${END}"
 echo -e "${GREEN}[INFO] Database path: $database_path_v${END}"
 echo -e "${GREEN}[INFO] All checks passed.${END}"
 
+# @note Lát bổ sung việc phân loại mode realtime và non-realtime để xử lý khác nhau
+
 # @brief Bắt đầu lắng nghe yêu cầu cấu hình từ gateway thông qua MQTT
 echo -e "${GREEN}[INFO] Waiting for gateway configuration request incoming...${END}"
 request_v=$(mosquitto_sub -h $mqtt_server_ip_p -p 1883 -u $username_p -P $password_p -C 1 -t server/request)
