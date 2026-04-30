@@ -21,6 +21,7 @@ echo -e "${GREEN}[INFO] Starting server script rewrite...${END}"
 mqtt_server_ip_p=$1
 username_p=$2
 password_p=$3
+realtime_mode_p=$4
 
 # @brief Khai báo tham số đường dẫn vào dự án
 project_path_p=$(pwd)
@@ -201,5 +202,5 @@ validate_request_v=$(mosquitto_sub -h "$mqtt_server_ip_p" -p 1883 -u "$username_
 # @brief Hiển thị thông tin yêu cầu xác thực đã nhận được để xác nhận trước khi tiếp tục
 echo -e "${GREEN}[INFO] Received gateway validation request: $validate_request_v${END}"
 
-# @brief Tạm thời dừng ở đây, lát làm tiếp 
+# @brief 
 end

@@ -14,24 +14,24 @@ Server sẽ nhận được thông điệp này và trả lại thông điệp n
 - Mỗi thiết bị sẽ có số lượng firmware khác nhau. Do đó, với mỗi thiết bị thì server sẽ trả về một thông điệp riêng biệt chứa thông tin về firmware của thiết bị đó.
 - Device_ID (1 byte) mang giá trị từ `0x01` đến `0x90` để chỉ định thiết bị cụ thể mà thông điệp này đang đề cập đến. (Lưu ý rằng Device_ID sẽ sử dụng 1 byte truncated địa chỉ MAC của thiết bị để ánh xạ đến một ID duy nhất trong hệ thống)
 - FW_Count (1 byte) mang giá trị từ `0x00` đến `0xFF` để chỉ định số lượng firmware mà thiết bị này đang có. Trường này giúp server biết được có bao nhiêu firmware cần được cập nhật cho thiết bị này.
-- Latest_Ver (2 bytes) là phiên bản mới nhất SV đang có (ví dụ 2.6 -> 26)
 - FW_ID (2 byte) là ID của loại phần mềm dành cho thiết bị này
-- Last_Update (4 byte) Unix Timestamp (Ngày cập nhật gần nhất của thiết bị này)
+- Latest_Ver (2 bytes) là phiên bản mới nhất SV đang có (ví dụ 2.6 -> 26)
 - Priority (1 byte) 0: Bình thường, 1: Bắt buộc (Force Update)
+- Last_Update (4 byte) Unix Timestamp (Ngày cập nhật gần nhất của thiết bị này)
 
 Ví dụ
 
 ```markdown
 - Device_ID là 0x5
 - FW_Count là 3
-- FW_ID 1 là 0x03e8 + Priority 0
-- FW_ID 2 là 0x03b2 + Priority 1
-- FW_ID 3 là 0x02d4 + Priority 1
+- FW_ID 1 là 0x03e8 version 2.5 + Priority 0
+- FW_ID 2 là 0x03b2 ver 3.0 + Priority 1
+- FW_ID 3 là 0x02d4 ver 1.7 + Priority 1
 - Last_Update là 653B6F00 
--> Chuỗi packet hoàn chỉnh là `0x05 0x03 0x03e8 0x00 0x0302 0x01 0x02d4 0x01 0x653B6F00`.
+-> Chuỗi packet hoàn chỉnh là `0x5 0x03 0x03e8 0x0205 0x00 0x0302 0x0300 0x01 0x02d4 0x0170 0x01 0x653B6F00`
 Sau khi thực hiện CRC-16 trên các trường này.
 -> Giả sử kết quả là `0x1A2B` 
-   Thông điệp hoàn chỉnh sẽ là `0x05 0x03 0x03e8 0x00 0x0302 0x01 0x02d4 0x01 0x653B6F00 0x1A2B`
+   Thông điệp hoàn chỉnh sẽ là `0x5 0x03 0x03e8 0x0205 0x00 0x0302 0x0300 0x01 0x02d4 0x0170 0x01 0x653B6F00 0x1A2B`
 ```
 
 ## Thông điệp yêu cầu cập nhật firmware từ device đến gateway
