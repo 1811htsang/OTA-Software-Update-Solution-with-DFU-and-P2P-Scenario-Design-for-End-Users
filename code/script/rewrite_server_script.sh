@@ -61,148 +61,140 @@ echo -e "${GREEN}[INFO] Script path: $script_path_v${END}"
 echo -e "${GREEN}[INFO] Database path: $database_path_v${END}"
 echo -e "${GREEN}[INFO] All checks passed.${END}"
 
-# @note Lát bổ sung việc phân loại mode realtime và non-realtime để xử lý khác nhau
+# @brief Tạo CRC-16 cho chuỗi hex
+crc16_hex_v() {
+  python3 - "$1" <<'PY'
+import binascii
+import sys
 
-# @brief Bắt đầu lắng nghe yêu cầu cấu hình từ gateway thông qua MQTT
-echo -e "${GREEN}[INFO] Waiting for gateway configuration request incoming...${END}"
-request_v=$(mosquitto_sub -h $mqtt_server_ip_p -p 1883 -u $username_p -P $password_p -C 1 -t server/request)
+packet_hex = sys.argv[1]
+packet_bytes = bytes.fromhex(packet_hex)
+print(f"{binascii.crc_hqx(packet_bytes, 0xFFFF):04X}")
+PY
+}
 
-# @brief Hiển thị thông tin yêu cầu cấu hình đã nhận được để xác nhận trước khi tiếp tục
-echo -e "${GREEN}[INFO] Received gateway configuration request: $request_v${END}"
+# @brief Parse gói tin request từ gateway theo encode rule FF D1 Sync_Token CRC
+parse_gateway_config_request_v() {
+  local packet_v
+  local cleaned_packet_v
+  local header_v
+  local gateway_id_v
+  local sync_token_v
+  local crc_v
+  local packet_without_crc_v
+  local calculated_crc_v
 
-# Function to parse encoded packet from gateway configuration request
-parse_gateway_config_request() {
-  local packet="$1"
+  packet_v="$1"
+  cleaned_packet_v=$(echo "$packet_v" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
 
-  # Ensure the packet has the minimum required length (7 bytes: Header, ID, Sync_Token, CRC)
-  if [[ ${#packet} -lt 7 ]]; then
-    echo -e "${RED}[Error] Invalid packet length!${END}"
+  if [[ ${#cleaned_packet_v} -ne 16 ]]; then
+    echo -e "${RED}[Error] Invalid gateway request length: $cleaned_packet_v${END}"
     return 1
   fi
 
-  # Extract fields from the packet
-  local header="${packet:0:2}"
-  local id="${packet:2:2}"
-  local sync_token="${packet:4:8}"
-  local crc="${packet:12:2}"
+  header_v=${cleaned_packet_v:0:2}
+  gateway_id_v=${cleaned_packet_v:2:2}
+  sync_token_v=${cleaned_packet_v:4:8}
+  crc_v=${cleaned_packet_v:12:4}
+  packet_without_crc_v=${cleaned_packet_v:0:12}
+  calculated_crc_v=$(crc16_hex_v "$packet_without_crc_v")
 
-  # Check CRC 
-  local calculated_crc=$(python3 -c "
-    import binascii
-    data = bytes.fromhex('050303E80003B20102D401653B6F00')
-    crc = binascii.crc_hqx(data, 0xFFFF)
-    print(f'{hex(crc).upper()}')
-  ")
-
-  # Validate the header and ID
-  if [[ "$header" != "FF" || "$id" != "D1" ]]; then
-    echo -e "${RED}[Error] Invalid packet header or ID!${END}"
+  if [[ "$header_v" != "FF" || "$gateway_id_v" != "D1" ]]; then
+    echo -e "${RED}[Error] Invalid gateway header or id.${END}"
     return 1
   fi
 
-  # Validate CRC
-  if [[ "$crc" != "${calculated_crc:2:2}" ]]; then
-    echo -e "${RED}[Error] CRC check failed!${END}"
+  if [[ "$crc_v" != "$calculated_crc_v" ]]; then
+    echo -e "${RED}[Error] CRC mismatch for gateway request.${END}"
     return 1
   fi
 
-  # Assign extracted values to variables
-  gateway_header="$header"
-  gateway_id="$id"
-  gateway_sync_token="$sync_token"
-  gateway_crc="$crc"
-
-  echo -e "${GREEN}[INFO] Parsed packet successfully:${END}"
-  echo -e "${GREEN}[INFO] Header: $gateway_header${END}"
-  echo -e "${GREEN}[INFO] ID: $gateway_id${END}"
-  echo -e "${GREEN}[INFO] Sync Token: $gateway_sync_token${END}"
-  echo -e "${GREEN}[INFO] CRC: $gateway_crc${END}"
+  gateway_header_v="$header_v"
+  gateway_request_id_v="$gateway_id_v"
+  gateway_sync_token_v="$sync_token_v"
+  gateway_request_crc_v="$crc_v"
 
   return 0
 }
 
-is_pass_v= parse_gateway_config_request "$request_v"
+# @brief Đóng gói một bản ghi firmware cho gateway manifest response
+build_server_manifest_packet_v() {
+  local device_id_v="$1"
+  local fw_count_v="$2"
+  local fw_id_v="$3"
+  local version_v="$4"
+  local priority_v="$5"
+  local last_update_v="$6"
+  local payload_v
+  local crc_v
 
-# @brief Gọi hàm phân tích yêu cầu cấu hình từ gateway
-if [[ $is_pass_v -eq 0 ]]; then
-  echo -e "${GREEN}[INFO] Gateway configuration request parsed successfully.${END}"
-else
+  payload_v=$(printf "%02X%02X%04X%04X%02X%08X" "$device_id_v" "$fw_count_v" "$fw_id_v" "$version_v" "$priority_v" "$last_update_v")
+  crc_v=$(crc16_hex_v "$payload_v")
+  printf '%s%s' "$payload_v" "$crc_v"
+}
+
+# @brief Gửi manifest server lên gateway sau khi nhận request đồng bộ
+send_server_manifest_v() {
+  local manifest_rows_v
+  local manifest_line_v
+  local response_lines_v=""
+
+  manifest_rows_v=$(sqlite3 -separator '|' "$database_path_v/server_db.db" "
+WITH active_fw AS (
+  SELECT d.device_id, f.fw_id, f.version, f.is_force, d.last_update_timestamp
+  FROM devices d
+  JOIN dev_join_fw j ON d.device_id = j.device_id
+  JOIN firmwares f ON j.fw_id = f.fw_id
+  WHERE d.status = 1
+)
+SELECT a.device_id,
+       (SELECT COUNT(*) FROM active_fw b WHERE b.device_id = a.device_id) AS fw_count,
+       a.fw_id,
+       a.version,
+       a.is_force,
+       a.last_update_timestamp
+FROM active_fw a
+ORDER BY a.device_id, a.fw_id;")
+
+  if [[ -z "$manifest_rows_v" ]]; then
+    echo -e "${RED}[Error] No firmware manifest data found in server database.${END}"
+    return 1
+  fi
+
+  while IFS='|' read -r device_id_v fw_count_v fw_id_v version_v priority_v last_update_v; do
+    [[ -z "$device_id_v" ]] && continue
+    manifest_line_v=$(build_server_manifest_packet_v "$device_id_v" "$fw_count_v" "$fw_id_v" "$version_v" "$priority_v" "$last_update_v")
+    response_lines_v+="$manifest_line_v\n"
+  done <<< "$manifest_rows_v"
+
+  mosquitto_pub -h "$mqtt_server_ip_p" -p 1883 -u "$username_p" -P "$password_p" -t server/response -m "$(printf '%b' "$response_lines_v")" -r
+}
+
+# @brief Chờ request cấu hình từ gateway
+echo -e "${GREEN}[INFO] Waiting for gateway configuration request incoming...${END}"
+request_v=$(mosquitto_sub -h "$mqtt_server_ip_p" -p 1883 -u "$username_p" -P "$password_p" -C 1 -t server/request)
+
+echo -e "${GREEN}[INFO] Received gateway configuration request: $request_v${END}"
+
+if ! parse_gateway_config_request_v "$request_v"; then
   echo -e "${RED}[Error] Failed to parse gateway configuration request!${END}"
   exit 1
 fi
 
-# @brief Sau khi phân tích yêu cầu cấu hình, server sẽ thực hiện các bước cần thiết để cập nhật cấu hình và phản hồi lại gateway
-# @attention Bước này sẽ gọi sqlite để lấy cấu hình toàn bộ 
-#            các thiết bị và gửi lại cho gateway thông qua MQTT
-command_v="
-SELECT devices.device_id, devices.device_name, devices.device_type, firmwares.fw_version
-FROM dev_join_fw 
-  JOIN devices ON dev_join_fw.device_id = devices.device_id
-  JOIN firmwares ON dev_join_fw.fw_id = firmwares.fw_id;
-"
+echo -e "${GREEN}[INFO] Gateway request parsed successfully.${END}"
+echo -e "${GREEN}[INFO] Header: $gateway_header_v${END}"
+echo -e "${GREEN}[INFO] Request ID: $gateway_request_id_v${END}"
+echo -e "${GREEN}[INFO] Sync Token: $gateway_sync_token_v${END}"
 
-# @brief Truy vấn cơ sở dữ liệu để lấy thông tin firmware cho từng thiết bị
-query_v="
-  SELECT devices.device_id, firmwares.fw_id, firmwares.version, firmwares.file_size, firmwares.is_force, devices.last_update_timestamp \n
-  FROM dev_join_fw \n
-  JOIN devices ON dev_join_fw.device_id = devices.device_id \n
-  JOIN firmwares ON dev_join_fw.fw_id = firmwares.fw_id \n
-  WHERE devices.status = 1;
-"
-
-# @brief Thực thi truy vấn và lưu kết quả vào biến
-results_v=$(sqlite3 "$database_path_v/server_db.db" "$query_v")
-
-# @brief Kiểm tra nếu không có dữ liệu trả về
-if [[ -z "$results_v" ]]; then
-  echo -e "${RED}[Error] No data found for devices!${END}"
+if ! send_server_manifest_v; then
   exit 1
 fi
 
-# @brief Đóng gói dữ liệu trả về theo định dạng quy tắc mã hóa thông điệp
-response_v=""
-while IFS="|" read -r device_id fw_id version file_size is_force last_update; do
-  # Chuyển đổi dữ liệu thành định dạng hex
-  device_id_hex_v=$(printf "%02X" "$device_id")
-  fw_id_hex_v=$(printf "%04X" "$fw_id")
-  version_hex_v=$(printf "%04X" "$version")
-  file_size_hex_v=$(printf "%08X" "$file_size")
-  is_force_hex_v=$(printf "%02X" "$is_force")
-  last_update_hex_v=$(printf "%08X" "$last_update")
+echo -e "${GREEN}[INFO] Server manifest response sent successfully.${END}"
 
-  # Đóng gói thông điệp
-  packet_v="$device_id_hex_v$fw_id_hex_v$version_hex_v$file_size_hex_v$is_force_hex_v$last_update_hex_v"
-
-  # Tính toán CRC
-  crc=$(python3 -c "import binascii; data=bytes.fromhex('$packet_v'); print(binascii.crc_hqx(data, 0xFFFF).to_bytes(2, 'big').hex().upper())")
-
-  # Thêm CRC vào thông điệp
-  packet_v="$packet_v$crc"
-
-  # Thêm thông điệp vào phản hồi
-  response_v+="$packet_v\n"
-done <<< "$results_v"
-
-# @brief Gửi phản hồi lại cho gateway thông qua MQTT
-echo -e "${GREEN}[INFO] Sending response_v to gateway...${END}"
-echo -e "$response_v" | mosquitto_pub -h "$mqtt_server_ip_p" -p 1883 -u "$username_p" -P "$password_p" -t server/response -l
-
-# @brief Xác nhận đã gửi thành công
-echo -e "${GREEN}[INFO] response_v sent successfully.${END}"
-
-# @brief Sleep 10s để quá trình truyền hoàn tất và reset lại mqtt history để tránh lỗi khi chạy lại script
-sleep 10
-
-# @brief Gọi ./clear.sh để xóa mqtt history
-# @attention Sau khi clear xong thì bắt đầu thử nghiệm giả lập kịch bản DFU
-bash "$script_path_v/clear.sh"
-
-# @brief Đợi validation request từ gateway để bắt đầu quá trình DFU
+# @brief Đợi một yêu cầu xác thực tiếp theo nếu luồng vận hành cần tiếp tục
 echo -e "${GREEN}[INFO] Waiting for gateway validation request incoming...${END}"
 validate_request_v=$(mosquitto_sub -h "$mqtt_server_ip_p" -p 1883 -u "$username_p" -P "$password_p" -C 1 -t server/request)
-
-# @brief Hiển thị thông tin yêu cầu xác thực đã nhận được để xác nhận trước khi tiếp tục
 echo -e "${GREEN}[INFO] Received gateway validation request: $validate_request_v${END}"
 
-# @brief 
-end
+exit 0
